@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: pki-2fa-express
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: UTC
+      DATA_DIR: /data
+      PRIVATE_KEY_PATH: /app/student_private.pem
+      INSTRUCTOR_PUBLIC_KEY_PATH: /app/instructor_public.pem
+    volumes:
+      - seed-data:/data
+      - cron-output:/cron
+    restart: unless-stopped
+
+volumes:
+  seed-data:
+  cron-output:

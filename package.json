@@ -1,0 +1,19 @@
+{
+  "name": "pki-based-2fa-microservice",
+   "version": "1.0.0",
+  "main": "src/server.js",
+   "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "request-seed": "node scripts/request_seed.js"
+  },
+  "author": "Peddireddi Panasa Ramanna",
+  "license": "ISC",
+  "dependencies": {
+    "base32-encode": "^2.0.0",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "otplib": "^12.0.1"
+  }
+}
