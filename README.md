@@ -1,137 +1,122 @@
 PKI-Based 2FA Microservice
 
-A secure Two-Factor Authentication backend using RSA cryptography, TOTP, Docker, cron jobs, and persistent volumes.
-
 Repository: https://github.com/Rampeddireddi/PKI-based-2FA-microservice
 
 Docker Container Name: pki-2fa-express
-Final Commit Hash (used for proof): a2f538c
+Final Commit Hash: a2f538c
 
-🧠 1. Why This Project Exists
+1. Project Purpose
 
-This project implements a PKI-based Two-Factor Authentication (2FA) microservice, as required by the Partnr Network – Talent Layer for Borderless Societies assignment.
+This microservice implements a PKI-based Two-Factor Authentication (2FA) system for the Partnr Network assignment.
+It demonstrates:
 
-The purpose of this project is to:
+RSA-encrypted seed exchange
 
-✔ Prove identity through cryptographic signing
-✔ Implement secure seed exchange using RSA
-✔ Generate and verify TOTP (Google Authenticator–compatible) codes
-✔ Persist data across Docker restarts
-✔ Run scheduled cron tasks inside a container
-✔ Demonstrate production-ready microservice behavior
+Secure seed decryption
 
-This microservice mimics how real companies implement secure multi-factor authentication using cryptography and isolated infrastructure.
+TOTP generation and verification
 
-🏗️ 2. What This Project Implements
+Docker-based persistent storage
 
-This backend fulfills all assignment requirements by implementing:
+Cron-based OTP logging
 
-🔐 A. RSA-OAEP Encrypted Seed Handling
+Cryptographic commit-proof using RSA-PSS
 
-The instructor service provides an encrypted seed.
+2. What the Project Implements
+A. RSA-OAEP Seed Decryption
 
-The backend decrypts it using student_private.pem.
-
-The decrypted seed is stored securely in a Docker volume, not in Git.
-
-Seed is saved inside container at:
+The instructor provides an encrypted seed.
+The backend decrypts it using student_private.pem and stores the decrypted seed at:
 
 /data/seed.txt
 
 
-This seed powers all TOTP generation.
+The decrypted seed:
 
-🕒 B. TOTP-Based 2FA (RFC 6238)
+is persistent across container restarts
 
-The service generates and verifies 6-digit TOTP codes using:
+is never pushed to GitHub
 
-SHA-1
+is used for all TOTP generation
 
-30-second time window
+B. TOTP-Based 2FA Generation and Verification
 
-Base32-encoded seed
+The microservice generates and verifies 6-digit TOTP codes using:
 
-Related endpoints:
+30-second time steps
 
-Endpoint	Function
-POST /decrypt-seed	Decrypt & persist the seed
-GET /generate-2fa	Generate current TOTP + seconds remaining
-POST /verify-2fa	Verify user-supplied TOTP
-📦 C. Dockerized Persistent Storage
+SHA-1 algorithm
 
-A Docker volume ensures that:
+Base32 encoded seed
 
-The decrypted seed persists across container rebuilds.
+This satisfies the assignment requirement for 2FA functionality.
 
-Cron log history is saved.
+C. Docker Persistent Volumes
 
-Docker mounts:
+Two directories inside Docker persist across container restarts:
 
-/data  → seed persistence  
-/cron  → OTP log persistence
+/data  → stores decrypted seed
+/cron  → stores OTP logs
 
-⏲️ D. Cron Job for OTP Logging
 
-A cron job runs every minute inside the container:
+This ensures TOTP continues working even after restarting containers.
+
+D. Cron Job Execution Inside Container
+
+A cron entry runs every minute:
 
 * * * * * cd /app && /usr/local/bin/node scripts/log_2fa_cron.js >> /cron/last_code.txt 2>&1
 
 
-It writes:
+It logs the current OTP:
 
-2025-12-10 08:15:01 - 2FA Code: 114913
+2025-12-10 08:17:01 - 2FA Code: 304408
 
 
-This confirms:
+This verifies:
 
-Seed exists
+cron is running
 
-Seed is correct
+seed exists
 
-Cron is functioning
+TOTP is valid
 
-OTP generation is consistent
+Docker volumes are persistent
 
-✍️ E. Commit Signing Using RSA-PSS
+E. Commit-Proof Signing (RSA-PSS)
 
-To prove assignment authenticity:
+The assignment requires proving repository ownership.
 
-You take the commit hash: a2f538c
+Process:
 
-Sign it with your student private key
+Take commit hash a2f538c
 
-Encrypt the signature using the instructor public key
+Sign it with student_private.pem using RSA-PSS SHA256
+
+Encrypt the signature using instructor_public.pem
 
 Submit the Base64 output
 
-Script used:
+The script used:
 
 scripts/commit_proof.js
 
-
-This ensures cryptographic verification of repository ownership.
-
-🌐 3. API Endpoints
+3. API Endpoints
 POST /decrypt-seed
 
-Decrypts and stores the seed.
+Decrypts encrypted seed and stores it in /data/seed.txt.
 
-Request:
+Example:
 
 {
-  "encrypted_seed": "<string from instructor API>"
+  "encrypted_seed": "<encrypted seed>"
 }
-
-
-Response:
-
-{ "status": "ok" }
 
 GET /generate-2fa
 
-Returns a 6-digit OTP + seconds remaining in the 30-second window.
+Returns the current TOTP code and seconds remaining in the 30-second window.
 
-Response:
+Example:
 
 {
   "code": "391975",
@@ -140,7 +125,7 @@ Response:
 
 POST /verify-2fa
 
-Validates OTP with ±1 window tolerance.
+Verifies a submitted TOTP code.
 
 Request:
 
@@ -155,24 +140,31 @@ Response:
   "valid": true
 }
 
-🐳 4. Running the Project in Docker
-Start the microservice
+4. Running the Project With Docker
+
+Start containers:
+
 docker-compose up -d
 
-Check running container
+
+Check running:
+
 docker ps
 
 
 You should see:
 
-pki-2fa-express  ...  Up  8080->8080/tcp
+pki-2fa-express
 
 Verify seed persistence
+
+Inside container:
+
 docker exec -it pki-2fa-express sh
 cat /data/seed.txt
 
 
-After restart:
+Restart and check again:
 
 docker-compose down
 docker-compose up -d
@@ -180,97 +172,79 @@ docker exec -it pki-2fa-express sh
 cat /data/seed.txt
 
 
-The same seed should still be present.
+The same seed should remain.
 
-View cron-generated OTP logs
+Check cron OTP logs
 docker exec pki-2fa-express cat /cron/last_code.txt
 
+5. Project Structure
+src/
+  crypto.js
+  totp.js
+  routes.js
 
-You will see minute-by-minute codes.
+scripts/
+  log_2fa_cron.js
+  commit_proof.js
 
-📁 5. Project Structure
-PKI-based-2FA-microservice/
-│
-├── src/
-│   ├── crypto.js          # RSA decryption + signing
-│   ├── totp.js            # TOTP generation & verification
-│   └── routes.js          # Express API routes
-│
-├── scripts/
-│   ├── log_2fa_cron.js    # Cron job to log OTPs every minute
-│   └── commit_proof.js    # Signs commit hash for assignment submission
-│
-├── cron/
-│   └── 2fa-cron           # Cron schedule file (LF format)
-│
-├── Dockerfile             # Multi-stage Docker build
-├── docker-compose.yml     # Volumes, container config
-└── .gitignore             # Seed + sensitive files excluded
+cron/
+  2fa-cron
 
-🔐 6. Security Requirements
+Dockerfile
+docker-compose.yml
+.gitignore
 
-The assignment explicitly specifies:
+6. Security Requirements
 
-❌ DO NOT COMMIT:
+According to assignment instructions:
 
-The decrypted seed (seed.txt)
+Do NOT push:
 
-Contents of /data volume
+decrypted seed (seed.txt)
 
-✔ ALLOWED:
+/data/seed.txt
 
-Public keys
+any files inside Docker volumes
 
-Encrypted seed
+Allowed to push:
 
-Source code
+encrypted seed
 
-Docker configuration
+public keys
 
-✔ EXPECTED:
+all application code
 
-Seed must persist across container restarts
+Seed must only be stored inside Docker volumes.
 
-Cron logs must persist
+7. Generating Commit Proof
 
-Final commit must be signed
-
-📝 7. Generating Commit Proof
-
-To produce the required submission proof:
+Run:
 
 node scripts/commit_proof.js a2f538c
 
 
-Output example:
-
-===== SUBMISSION PROOF START =====
-BASE64_ENCRYPTED_SIGNATURE_HERE==
-===== SUBMISSION PROOF END =====
-
-
 Submit:
 
-GitHub repo URL
+GitHub repository URL
 
 Commit hash (a2f538c)
 
-Base64 encrypted proof
+The Base64 encrypted proof
 
-This confirms your identity cryptographically.
+This completes the identity verification requirement.
 
-🎉 8. Summary
+8. Summary
 
-This project demonstrates:
+This microservice implements:
 
-RSA key-based secure seed handling
+RSA-based seed decryption
 
-Proper TOTP generation and verification
+TOTP generation & verification
 
-Dockerized microservice with persistent volumes
+Persistent Docker volumes
 
-Cron-based background job scheduling
+Cron scheduling inside the container
 
-Cryptographically signed commit proof
+RSA-PSS commit-proof system
 
-It fully satisfies all requirements of the Partnr PKI-based 2FA assignment.
+It fully meets the requirements of the PKI-based 2FA assignment.
